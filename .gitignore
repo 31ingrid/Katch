@@ -1,4 +1,13 @@
-
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+admod*
+fmin.log
+variance
+*.htp
+*.obj
+*.o
 .DS_Store
 .Rproj.user
 .Rhistory
