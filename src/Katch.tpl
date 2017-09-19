@@ -7,7 +7,8 @@
 			//this is how to change the name of the data file
 // when you run it add 			./atfbsai_is2014_6 -ind atfbsai_is2014_4.dat
 DATA_SECTION
-!!CLASS ofstream evalout("atf_gen2.mcmc.out");       //wasgen
+	init_adstring datafile;
+	!! ad_comm::change_datafile_name(datafile); 
   init_int styr         //(1) start year of model
   init_int endyr        //(2) end year
   init_int styr_fut     //(3) start year of projections (endyr+1) 
@@ -1140,6 +1141,10 @@ REPORT_SECTION
 RUNTIME_SECTION
   maximum_function_evaluations 4000
   convergence_criteria 1e-3 1e-4 1e-7
+	
+GLOBALS_SECTION
+	#include <admodel.h>
+  ofstream evalout("Katch_MCMC.rep");       //wasgen
 
 TOP_OF_MAIN_SECTION
   arrmblsize = 20000000;

@@ -1,14 +1,25 @@
+#ifdef DEBUG
+  #ifndef __SUNPRO_C
+    #include <cfenv>
+    #include <cstdlib>
+  #endif
+#endif
+	#include <admodel.h>
+  ofstream evalout("Katch_MCMC.rep");       //wasgen
 #include <admodel.h>
 #include <contrib.h>
 
   extern "C"  {
     void ad_boundf(int i);
   }
+#include <gdbprintlib.cpp>
+
 #include <Katch.htp>
 
 model_data::model_data(int argc,char * argv[]) : ad_comm(argc,argv)
 {
-  pad_evalout = new ofstream("atf_gen2.mcmc.out");       //wasgen;
+  datafile.allocate("datafile");
+ ad_comm::change_datafile_name(datafile); 
   styr.allocate("styr");
   endyr.allocate("endyr");
   styr_fut.allocate("styr_fut");
@@ -504,7 +515,6 @@ void model_parameters::preliminary_calculations(void)
 void model_parameters::userfunction(void)
 {
   obj_fun =0.0;
-  ofstream& evalout= *pad_evalout;
    get_selectivity();     
    get_mortality();  
     surv(1)=mfexp(-1.0* M(1));
@@ -537,7 +547,6 @@ void model_parameters::userfunction(void)
 
 void model_parameters::get_selectivity(void)
 {
-  ofstream& evalout= *pad_evalout;
   if(active(log_selcoffs_fish))// 
  {           
     for(k=1;k<=2;k++)
@@ -618,7 +627,6 @@ void model_parameters::get_selectivity(void)
 
 dvar_vector model_parameters::get_sel(const dvariable& slp, const dvariable& a50)
 {
-  ofstream& evalout= *pad_evalout;
    {
 	dvar_vector sel_tmp(1,nages);
     for (j=1;j<=nages;j++)  //this is selectivity for the surveys
@@ -632,7 +640,6 @@ dvar_vector model_parameters::get_sel(const dvariable& slp, const dvariable& a50
 
 dvar_vector model_parameters::get_sel(const dvariable& slp, const dvariable& a50, const dvariable& dslp, const dvariable& d50)
 {
-  ofstream& evalout= *pad_evalout;
    {
 	dvar_vector sel_tmp(1,nages);
    for (j=1;j<=nages;j++)  //this is selectivity for the surveys         
@@ -646,7 +653,6 @@ dvar_vector model_parameters::get_sel(const dvariable& slp, const dvariable& a50
 
 void model_parameters::get_mortality(void)
 {
-  ofstream& evalout= *pad_evalout;
   maxsel_fish=max(sel(1));     //1 is females
   if(maxsel_fish<max(sel(2)))  //if highest female selectivity is > male selectivity, make maxsel_fish=male high selectivity
       maxsel_fish=max(sel(2));
@@ -668,7 +674,6 @@ void model_parameters::get_mortality(void)
 
 void model_parameters::get_numbers_at_age(void)
 {
-  ofstream& evalout= *pad_evalout;
   for(i=1;i<=nsurv;i++)
   {
    maxsel_srv(i)=max(sel_srv(1,i));
@@ -814,7 +819,6 @@ void model_parameters::get_numbers_at_age(void)
 
 void model_parameters::get_catch_at_age(void)
 {
-  ofstream& evalout= *pad_evalout;
   for (i=styr; i<=endyr; i++)
   {
     pred_catch(i)=0.;
@@ -834,7 +838,6 @@ void model_parameters::get_catch_at_age(void)
 
 void model_parameters::Future_projections(void)
 {
-  ofstream& evalout= *pad_evalout;
   for(k=1;k<=2;k++)
   {
     nage_future(k,styr_fut)(2,nages)=++elem_prod(natage(k,endyr)(1,nages-1),S(k,endyr)(1,nages-1));
@@ -902,7 +905,6 @@ void model_parameters::Future_projections(void)
 
 void model_parameters::compute_spr_rates(void)
 {
-  ofstream& evalout= *pad_evalout;
   //Compute SPR Rates and add them to the likelihood for Females 
   SB0.initialize();
   SBF40.initialize();
@@ -939,7 +941,6 @@ void model_parameters::compute_spr_rates(void)
 
 void model_parameters::Do_depend(void)
 {
-  ofstream& evalout= *pad_evalout;
   for (i=styr;  i<=endyr;  i++) 
   totalbiomass(i)=natage(1,i)*wt(1) + natage(2,i)*wt(2);
   obj_fun += 1.*sexr_like;             // male proportion prior, emphasis factor = 1
@@ -947,7 +948,6 @@ void model_parameters::Do_depend(void)
 
 void model_parameters::evaluate_the_objective_function(void)
 {
-  ofstream& evalout= *pad_evalout;
   length_like.initialize();
   age_like.initialize();   
   sel_like.initialize(); 
@@ -1263,10 +1263,7 @@ model_data::~model_data()
 {}
 
 model_parameters::~model_parameters()
-{
-  delete pad_evalout;
-  pad_evalout = NULL;
-}
+{}
 
 void model_parameters::final_calcs(void){}
 
@@ -1290,12 +1287,31 @@ int main(int argc,char * argv[])
   gradient_structure::set_GRADSTACK_BUFFER_SIZE(10000000);
   gradient_structure::set_CMPDIF_BUFFER_SIZE(4000000);
     gradient_structure::set_NO_DERIVATIVES();
+#ifdef DEBUG
+  #ifndef __SUNPRO_C
+std::feclearexcept(FE_ALL_EXCEPT);
+  #endif
+#endif
     gradient_structure::set_YES_SAVE_VARIABLES_VALUES();
     if (!arrmblsize) arrmblsize=15000000;
     model_parameters mp(arrmblsize,argc,argv);
     mp.iprint=10;
     mp.preliminary_calculations();
     mp.computations(argc,argv);
+#ifdef DEBUG
+  #ifndef __SUNPRO_C
+bool failedtest = false;
+if (std::fetestexcept(FE_DIVBYZERO))
+  { cerr << "Error: Detected division by zero." << endl; failedtest = true; }
+if (std::fetestexcept(FE_INVALID))
+  { cerr << "Error: Detected invalid argument." << endl; failedtest = true; }
+if (std::fetestexcept(FE_OVERFLOW))
+  { cerr << "Error: Detected overflow." << endl; failedtest = true; }
+if (std::fetestexcept(FE_UNDERFLOW))
+  { cerr << "Error: Detected underflow." << endl; }
+if (failedtest) { std::abort(); } 
+  #endif
+#endif
     return 0;
 }
 

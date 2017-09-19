@@ -2,7 +2,7 @@
 #  define _Katch_
 
 class model_data : public ad_comm{
-  ofstream *   pad_evalout;
+  init_adstring datafile;
   data_int styr;
   data_int endyr;
   data_int styr_fut;
